@@ -726,7 +726,6 @@
   width: flex-grid(12);
   max-width: $fg-max-width;
   min-width: $fg-min-width;
-  color: $white;
 
   strong {
     @extend %t-strong;
