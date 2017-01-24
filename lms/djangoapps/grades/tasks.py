@@ -107,6 +107,7 @@ def _recalculate_subsection_grade(task_func, **kwargs):
             has_database_updated = _has_db_updated_with_new_score(scored_block_usage_key, **kwargs)
 
         if not has_database_updated:
+            _log_db_not_updated(kwargs)
             raise _retry_recalculate_subsection_grade(task_func, **kwargs)
 
         _update_subsection_grades(
@@ -120,7 +121,7 @@ def _recalculate_subsection_grade(task_func, **kwargs):
         if not isinstance(exc, KNOWN_RETRY_ERRORS):
             log.info("tnl-6244 grades unexpected failure: {}. task id: {}. kwargs={}".format(
                 repr(exc),
-                recalculate_subsection_grade_v2.request.id,
+                recalculate_subsection_grade_v3.request.id,
                 kwargs,
             ))
         raise _retry_recalculate_subsection_grade(task_func, exc=exc, **kwargs)
@@ -170,14 +171,6 @@ def _has_db_updated_with_new_score_bwc_v2(
     if score is None:
         # score should be None only if it was deleted.
         # Otherwise, it hasn't yet been saved.
-        if not score_deleted:
-            _log_db_not_updated(
-                user_id,
-                scored_block_usage_key,
-                expected_modified_time,
-                score_deleted,
-                "N/A, no score present in database."
-            )
         return score_deleted
     elif score.module_type == 'openassessment':
         anon_id = anonymous_id_for_user(User.objects.get(id=user_id), scored_block_usage_key.course_key)
@@ -194,29 +187,12 @@ def _has_db_updated_with_new_score_bwc_v2(
         )
         if api_score is None:
             # Same case as the initial 'if' above, for submissions-specific scores
-            if not score_deleted:
-                _log_db_not_updated(
-                    user_id,
-                    scored_block_usage_key,
-                    expected_modified_time,
-                    score_deleted,
-                    "N/A, no score present in database."
-                )
             return score_deleted
         reported_modified_time = api_score['created_at']
     else:
         reported_modified_time = score.modified
 
-    db_updated = reported_modified_time >= expected_modified_time
-    if not db_updated:
-        _log_db_not_updated(
-            user_id,
-            scored_block_usage_key,
-            expected_modified_time,
-            score_deleted,
-            reported_modified_time
-        )
-    return db_updated
+    return reported_modified_time >= expected_modified_time
 
 
 def _log_db_not_updated(kwargs):
@@ -226,7 +202,7 @@ def _log_db_not_updated(kwargs):
     """
     log.info(
         u"Persistent Grades: tasks._has_database_updated_with_new_score is False. Task ID: {}. Kwargs: {}".format(
-            recalculate_subsection_grade_v2.request.id,
+            recalculate_subsection_grade_v3.request.id,
             kwargs
         )
     )
