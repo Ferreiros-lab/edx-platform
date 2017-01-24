@@ -368,7 +368,7 @@ class CourseGradeFactory(object):
         for student in students:
             with dog_stats_api.timer('lms.grades.CourseGradeFactory.iter', tags=[u'action:{}'.format(course.id)]):
                 try:
-                    course_grade = CourseGradeFactory().create(student, course, collected_block_structure)
+                    course_grade = CourseGradeFactory().create(student, course, collected_block_structure, read_only=False)
                     yield self.GradeResult(student, course_grade, "")
 
                 except Exception as exc:  # pylint: disable=broad-except
