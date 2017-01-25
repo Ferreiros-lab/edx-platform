@@ -232,3 +232,7 @@ class UserInfoTest(BaseTestMixin, UserInfoTestCase):
         self.user.save()
         claims = self.get_with_scope('permissions')
         self.assertTrue(claims['administrator'])
+
+    def test_tracking_scope(self):
+        claims = self.get_with_scope('tracking')
+        self.assertEqual(claims['user_tracking_id'], self.user.id)

@@ -78,6 +78,18 @@ class ProfileHandler(object):
         return language
 
 
+class TrackingHandler(object):
+    """ Basic OpenID Connect `tracking` scope handler with `user_tracking_id` claim. """
+
+    def scope_tracking(self, _data):
+        """ Add specialized claims. """
+        return ['user_tracking_id']
+
+    def claim_user_tracking_id(self, data):
+        """ Add user_tracking_id claim. """
+        return data['user'].id
+
+
 class CourseAccessHandler(object):
     """
     Defines two new scopes: `course_instructor` and `course_staff`. Each one is
@@ -231,6 +243,6 @@ class IDTokenHandler(OpenIDHandler, ProfileHandler, CourseAccessHandler, Permiss
             return None
 
 
-class UserInfoHandler(OpenIDHandler, ProfileHandler, CourseAccessHandler, PermissionsHandler):
+class UserInfoHandler(OpenIDHandler, ProfileHandler, TrackingHandler, CourseAccessHandler, PermissionsHandler):
     """ Configure the UserInfo handler for the LMS. """
     pass
