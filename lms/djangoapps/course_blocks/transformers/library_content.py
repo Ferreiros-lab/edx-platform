@@ -171,7 +171,9 @@ class ContentLibraryTransformer(FilteringTransformerMixin, BlockStructureTransfo
                 "location": unicode(location),
                 "previous_count": previous_count,
                 "result": result,
-                "max_count": max_count
+                "max_count": max_count,
+                "course_id": "",
+                "user_id": "",
             }
             event_data.update(kwargs)
             tracker.emit("edx.librarycontentblock.content.{}".format(event_name), event_data)

@@ -191,6 +191,8 @@ class LibraryContentModule(LibraryContentFields, XModule, StudioEditableModule):
             "result": result,
             "previous_count": getattr(self, "_last_event_result_count", len(self.selected)),
             "max_count": self.max_count,
+            "course_id": "",
+            "user_id": "",
         }
         event_data.update(kwargs)
         self.runtime.publish(self, "edx.librarycontentblock.content.{}".format(event_name), event_data)
