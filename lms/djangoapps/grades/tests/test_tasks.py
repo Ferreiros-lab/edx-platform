@@ -233,7 +233,6 @@ class RecalculateSubsectionGradeTest(ModuleStoreTestCase):
     def test_retry_when_db_not_updated(self, score_db_table, mock_log, mock_retry):
         self.set_up_course()
         self.recalculate_subsection_grade_kwargs['score_db_table'] = score_db_table
-
         modified_datetime = datetime.utcnow().replace(tzinfo=pytz.UTC) - timedelta(days=1)
         if score_db_table == ScoreDatabaseTableEnum.submissions:
             with patch('lms.djangoapps.grades.tasks.sub_api.get_score') as mock_sub_score:

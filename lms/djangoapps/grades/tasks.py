@@ -3,6 +3,7 @@ This module contains tasks for asynchronous execution of grade updates.
 """
 
 from celery import task
+from celery.exceptions import Retry
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -87,10 +88,9 @@ def _recalculate_subsection_grade(self, **kwargs):
         # created. This race condition occurs if the transaction in the task
         # creator's process hasn't committed before the task initiates in the worker
         # process.
-        has_database_updated = _has_db_updated_with_new_score(scored_block_usage_key, **kwargs)
+        has_database_updated = _has_db_updated_with_new_score(self, scored_block_usage_key, **kwargs)
 
         if not has_database_updated:
-            _log_db_not_updated(self, kwargs)
             raise _retry_recalculate_subsection_grade(self, **kwargs)
 
         _update_subsection_grades(
@@ -99,7 +99,8 @@ def _recalculate_subsection_grade(self, **kwargs):
             kwargs['only_if_higher'],
             kwargs['user_id'],
         )
-
+    except Retry:
+        raise
     except Exception as exc:   # pylint: disable=broad-except
         if not isinstance(exc, KNOWN_RETRY_ERRORS):
             log.info("tnl-6244 grades unexpected failure: {}. task id: {}. kwargs={}".format(
@@ -110,7 +111,7 @@ def _recalculate_subsection_grade(self, **kwargs):
         raise _retry_recalculate_subsection_grade(self, exc=exc, **kwargs)
 
 
-def _has_db_updated_with_new_score(scored_block_usage_key, **kwargs):
+def _has_db_updated_with_new_score(self, scored_block_usage_key, **kwargs):
     """
     Returns whether the database has been updated with the
     expected new score values for the given problem and user.
@@ -136,20 +137,18 @@ def _has_db_updated_with_new_score(scored_block_usage_key, **kwargs):
         # Otherwise, it hasn't yet been saved.
         return kwargs['score_deleted']
 
-    return found_modified_time >= from_timestamp(kwargs['expected_modified_time'])
-
-
-def _log_db_not_updated(self, kwargs):
-    """
-    Logs an info-level message indicating that the database was
-    not updated when we tried to recalculate a subsection grade.
-    """
-    log.info(
-        u"Persistent Grades: tasks._has_database_updated_with_new_score is False. Task ID: {}. Kwargs: {}".format(
-            self.request.id,
-            kwargs
+    db_is_updated = found_modified_time >= from_timestamp(kwargs['expected_modified_time'])
+    if not db_is_updated:
+        log.info(
+            u"Persistent Grades: tasks._has_database_updated_with_new_score is False. Task ID: {}. Kwargs: {}. Found "
+            u"modified time: {}".format(
+                self.request.id,
+                kwargs,
+                found_modified_time,
+            )
         )
-    )
+
+    return db_is_updated
 
 
 def _update_subsection_grades(
