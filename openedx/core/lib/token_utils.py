@@ -33,7 +33,7 @@ class JwtBuilder(object):
         self.secret = secret
         self.jwt_auth = configuration_helpers.get_value('JWT_AUTH', settings.JWT_AUTH)
 
-    def build_token(self, scopes, expires_in, aud=None):
+    def build_token(self, scopes, expires_in=None, aud=None, additional_claims=None):
         """Returns a JWT access token.
 
         Arguments:
@@ -42,8 +42,14 @@ class JwtBuilder(object):
 
         Keyword Arguments:
             aud (string): Overrides configured JWT audience claim.
+            additional_claims (dict): Additional claims to include in the token.
+
+        Returns:
+            str: Encoded JWT
         """
         now = int(time())
+        # TODO Test
+        expires_in = expires_in or self.jwt_auth['JWT_EXPIRATION']
         payload = {
             'aud': aud if aud else self.jwt_auth['JWT_AUDIENCE'],
             'exp': now + expires_in,
@@ -53,6 +59,10 @@ class JwtBuilder(object):
             'scopes': scopes,
             'sub': anonymous_id_for_user(self.user, None),
         }
+
+        # TODO Test
+        if additional_claims:
+            payload.update(additional_claims)
 
         for scope in scopes:
             handler = self.claim_handlers.get(scope)

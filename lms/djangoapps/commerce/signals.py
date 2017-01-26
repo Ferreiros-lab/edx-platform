@@ -9,6 +9,7 @@ from urlparse import urljoin
 
 import requests
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.dispatch import receiver
 from django.utils.translation import ugettext as _
@@ -21,6 +22,7 @@ from openedx.core.djangoapps.site_configuration import helpers as configuration_
 from openedx.core.djangoapps.theming import helpers as theming_helpers
 
 log = logging.getLogger(__name__)
+User = get_user_model()
 
 
 @receiver(UNENROLL_DONE)
@@ -40,7 +42,7 @@ def handle_unenroll_done(sender, course_enrollment=None, skip_refund=False,
             request_user = get_request_user() or course_enrollment.user
             if isinstance(request_user, AnonymousUser):
                 # Assume the request was initiated via server-to-server
-                # api call (presumably Otto).  In this case we cannot
+                # API call (presumably Otto).  In this case we cannot
                 # construct a client to call Otto back anyway, because
                 # the client does not work anonymously, and furthermore,
                 # there's certainly no need to inform Otto about this request.
@@ -92,8 +94,11 @@ def refund_seat(course_enrollment, request_user):
     """
     course_key_str = unicode(course_enrollment.course_id)
     unenrolled_user = course_enrollment.user
+    service_user = User.objects.get(username=settings.ECOMMERCE_SERVICE_WORKER_USERNAME)
+
 
     try:
+        # TODO Use the service user to create the refund.
         refund_ids = ecommerce_api_client(request_user or unenrolled_user).refunds.post(
             {'course_id': course_key_str, 'username': unenrolled_user.username}
         )
@@ -117,6 +122,8 @@ def refund_seat(course_enrollment, request_user):
             course_key_str,
             refund_ids,
         )
+
+        # TODO Attempt to refund as the service user
 
         # XCOM-371: this is a temporary measure to suppress refund-related email
         # notifications to students and support@) for free enrollments.  This
